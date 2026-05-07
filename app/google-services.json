@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "365878689675",
+    "project_id": "albrk-shoescare",
+    "storage_bucket": "albrk-shoescare.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:365878689675:android:a84cd4a993bc7cd46a398e",
+        "android_client_info": {
+          "package_name": "com.albrk.shoescare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB28SYuNA2MZitRpegBKMD2EzMzMT8ltyI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
