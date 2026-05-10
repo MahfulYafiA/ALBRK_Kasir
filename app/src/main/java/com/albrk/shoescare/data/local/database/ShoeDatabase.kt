@@ -5,12 +5,13 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import com.albrk.shoescare.data.local.dao.ShoeDao
+import com.albrk.shoescare.data.local.entity.ServiceItem // Tambahan import
 import com.albrk.shoescare.data.local.entity.Shoe
 import com.albrk.shoescare.data.local.entity.Transaction
 
-// 1. Tambahkan Transaction::class ke dalam daftar entities.
-// 2. Naikkan version menjadi 2 karena ada perubahan struktur tabel.
-@Database(entities = [Shoe::class, Transaction::class], version = 2, exportSchema = false)
+// 1. Tambahkan ServiceItem::class ke dalam daftar entities.
+// 2. Naikkan version menjadi 4 karena kita menambah kolom baru (imageUri) di tabel ServiceItem.
+@Database(entities = [Shoe::class, Transaction::class, ServiceItem::class], version = 4, exportSchema = false)
 abstract class ShoeDatabase : RoomDatabase() {
 
     abstract fun shoeDao(): ShoeDao
@@ -27,7 +28,7 @@ abstract class ShoeDatabase : RoomDatabase() {
                     "shoe_database"
                 )
                     // Karena kita menggunakan fallbackToDestructiveMigration,
-                    // Room akan otomatis menyesuaikan database saat versi naik ke 2.
+                    // Room akan otomatis mereset database ke versi 4 tanpa error.
                     .fallbackToDestructiveMigration()
                     .build()
 

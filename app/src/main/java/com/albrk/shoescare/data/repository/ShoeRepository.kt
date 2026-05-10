@@ -1,13 +1,30 @@
 package com.albrk.shoescare.data.repository
 
 import com.albrk.shoescare.data.local.dao.ShoeDao
+import com.albrk.shoescare.data.local.entity.ServiceItem // Tambahan import
 import com.albrk.shoescare.data.local.entity.Shoe
 import com.albrk.shoescare.data.local.entity.Transaction
 import kotlinx.coroutines.flow.Flow
 
 class ShoeRepository(private val shoeDao: ShoeDao) {
 
-    // --- LOGIKA LAYANAN SEPATU ---
+    // --- LOGIKA MENU LAYANAN DINAMIS (BARU) ---
+
+    val allServiceItems: Flow<List<ServiceItem>> = shoeDao.getAllServiceItems()
+
+    suspend fun insertServiceItem(service: ServiceItem) {
+        shoeDao.insertServiceItem(service)
+    }
+
+    suspend fun updateServiceItem(service: ServiceItem) {
+        shoeDao.updateServiceItem(service)
+    }
+
+    suspend fun deleteServiceItem(service: ServiceItem) {
+        shoeDao.deleteServiceItem(service)
+    }
+
+    // --- LOGIKA KERANJANG SEPATU ---
 
     val allShoes: Flow<List<Shoe>> = shoeDao.getAllShoes()
 
@@ -27,7 +44,7 @@ class ShoeRepository(private val shoeDao: ShoeDao) {
         return shoeDao.getShoeById(id)
     }
 
-    // --- LOGIKA TRANSAKSI (BARU) ---
+    // --- LOGIKA TRANSAKSI ---
 
     // Mengambil semua riwayat transaksi untuk laporan
     val allTransactions: Flow<List<Transaction>> = shoeDao.getAllTransactions()

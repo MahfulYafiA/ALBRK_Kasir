@@ -6,6 +6,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
+import com.albrk.shoescare.data.local.entity.ServiceItem // Tambahan import
 import com.albrk.shoescare.data.local.entity.Shoe
 import com.albrk.shoescare.data.local.entity.Transaction
 import kotlinx.coroutines.flow.Flow
@@ -13,7 +14,22 @@ import kotlinx.coroutines.flow.Flow
 @Dao
 interface ShoeDao {
 
-    // --- BAGIAN LAYANAN (KATALOG) ---
+    // --- BAGIAN LAYANAN/MENU DINAMIS (BARU) ---
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertServiceItem(service: ServiceItem)
+
+    @Update
+    suspend fun updateServiceItem(service: ServiceItem)
+
+    @Delete
+    suspend fun deleteServiceItem(service: ServiceItem)
+
+    @Query("SELECT * FROM services ORDER BY id ASC")
+    fun getAllServiceItems(): Flow<List<ServiceItem>>
+
+
+    // --- BAGIAN SEPATU (KERANJANG SEMENTARA) ---
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertShoe(shoe: Shoe)
@@ -38,7 +54,6 @@ interface ShoeDao {
     suspend fun insertTransaction(transaction: Transaction)
 
     // 2. Mengambil semua riwayat transaksi untuk laporan keuangan
-    // Diurutkan berdasarkan tanggal terbaru (date DESC)
     @Query("SELECT * FROM transactions ORDER BY date DESC")
     fun getAllTransactions(): Flow<List<Transaction>>
 

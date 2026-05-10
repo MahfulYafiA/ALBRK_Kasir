@@ -69,7 +69,7 @@ fun HomeScreen(
             TopAppBar(
                 title = {
                     Text(
-                        text = "Albrk Shoes Care",
+                        text = "ALBRK SHOESCARE",
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
