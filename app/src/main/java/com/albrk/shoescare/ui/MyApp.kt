@@ -1,92 +1,58 @@
 package com.albrk.shoescare.ui
 
-import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import com.albrk.shoescare.data.local.entity.Shoe
-import com.albrk.shoescare.ui.screen.add.AddShoeScreen
-import com.albrk.shoescare.ui.screen.detail.DetailScreen
-import com.albrk.shoescare.ui.screen.staff.StaffDashboardScreen
+import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.albrk.shoescare.ui.screen.auth.LoginScreen
+import com.albrk.shoescare.ui.screen.staff.MainScreen
 import com.albrk.shoescare.viewmodel.ShoeViewModel
 
 @Composable
-fun MyApp(
-    viewModel: ShoeViewModel,
-    onLogout: () -> Unit,
-    onOrderListClick: () -> Unit
-) {
-    // Navigasi Manual (Aman tanpa Library Tambahan)
-    var currentScreen by remember { mutableStateOf("dashboard") }
-    var selectedShoe by remember { mutableStateOf<Shoe?>(null) }
+fun MyApp() {
+    val navController = rememberNavController()
+    val viewModel: ShoeViewModel = viewModel()
 
-    // Variabel penampung data untuk dikirim ke Keranjang (AddShoeScreen)
-    var selectedServiceName by remember { mutableStateOf("") }
-    var selectedServicePrice by remember { mutableStateOf(0) }
+    NavHost(navController = navController, startDestination = "login") {
 
-    // Menangani tombol "Back" di HP
-    if (currentScreen != "dashboard") {
-        BackHandler {
-            currentScreen = "dashboard"
-        }
-    }
-
-    when (currentScreen) {
-        "dashboard" -> {
-            Box(modifier = Modifier.fillMaxSize()) {
-                // Memanggil Dashboard Staf (onManageClick dihapus)
-                StaffDashboardScreen(
-                    viewModel = viewModel,
-                    onLogout = onLogout,
-                    onServiceClick = { name, price ->
-                        selectedServiceName = name
-                        selectedServicePrice = price
-                        currentScreen = "add"
+        // 1. HALAMAN LOGIN
+        composable("login") {
+            LoginScreen(
+                // Sekarang onLoginClick cuma bawa SATU data (role/userId)
+                // Sesuai dengan LoginScreen(onLoginClick: (String) -> Unit)
+                onLoginClick = { roleOrId ->
+                    // Kita asumsikan userId sama dengan role untuk sementara
+                    // agar navigasi tetap jalan.
+                    navController.navigate("main/$roleOrId/$roleOrId") {
+                        popUpTo("login") { inclusive = true }
                     }
-                )
-
-                // Tombol Melayang "Riwayat Pesanan"
-                Button(
-                    onClick = onOrderListClick,
-                    modifier = Modifier
-                        .align(Alignment.BottomEnd)
-                        .padding(bottom = 32.dp, end = 16.dp)
-                ) {
-                    Text("Riwayat Pesanan")
                 }
-            }
-        }
-        "add" -> {
-            // Memanggil Keranjang (AddShoeScreen)
-            AddShoeScreen(
-                serviceName = selectedServiceName,
-                price = selectedServicePrice,
-                viewModel = viewModel,
-                onBack = { currentScreen = "dashboard" }
             )
         }
-        "detail" -> {
-            selectedShoe?.let { shoe ->
-                DetailScreen(
-                    name = shoe.name,
-                    price = shoe.price,
-                    navigateBack = { currentScreen = "dashboard" },
-                    onDeleteClick = {
-                        viewModel.deleteShoe(shoe)
-                        currentScreen = "dashboard"
+
+        // 2. HALAMAN UTAMA (KHUSUS STAF)
+        composable(
+            route = "main/{role}/{userId}",
+            arguments = listOf(
+                navArgument("role") { type = NavType.StringType },
+                navArgument("userId") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val role = backStackEntry.arguments?.getString("role") ?: "staff"
+            val userId = backStackEntry.arguments?.getString("userId") ?: ""
+
+            MainScreen(
+                userId = userId,
+                viewModel = viewModel,
+                onLogout = {
+                    navController.navigate("login") {
+                        popUpTo("main/$role/$userId") { inclusive = true }
                     }
-                )
-            }
+                }
+            )
         }
     }
 }
