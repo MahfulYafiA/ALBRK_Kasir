@@ -103,7 +103,7 @@ fun TransactionCardPremium(
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    // FORMAT TANGGAL (Ditambahkan)
+    // FORMAT TANGGAL
     val sdf = SimpleDateFormat("dd MMM yyyy, HH:mm", Locale("id", "ID"))
     val formattedDate = sdf.format(Date(transaction.date))
 
@@ -116,7 +116,7 @@ fun TransactionCardPremium(
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Column {
                     Text(transaction.customerName, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    // MENAMPILKAN TANGGAL (Ditambahkan)
+                    // MENAMPILKAN TANGGAL
                     Text(
                         text = "Dipesan: $formattedDate",
                         fontSize = 11.sp,
@@ -162,7 +162,8 @@ fun TransactionCardPremium(
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(12.dp))
+
             Text("Layanan: ${transaction.serviceNames}", fontSize = 13.sp, color = Color.DarkGray)
             Text("Total: Rp ${transaction.totalPrice}", fontWeight = FontWeight.ExtraBold, color = Color.Black)
 
