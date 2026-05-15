@@ -1,16 +1,14 @@
 package com.albrk.shoescare.data.local.entity
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+// Hapus import androidx.room...
 
-@Entity(tableName = "shoe_table")
 data class Shoe(
-    @PrimaryKey(autoGenerate = true)
+    // ID bisa tetap dibiarkan untuk membedakan item di keranjang (opsional)
     val id: Int = 0,
 
-    // TAMBAHKAN = "" agar Firebase tidak error
+    // Default value "" agar aman saat diolah
     val name: String = "",
 
-    // TAMBAHKAN = 0 agar Firebase tidak error
+    // Default value 0 agar aman saat dijumlahkan
     val price: Int = 0
 )

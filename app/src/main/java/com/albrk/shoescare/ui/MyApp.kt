@@ -13,27 +13,41 @@ import com.albrk.shoescare.viewmodel.ShoeViewModel
 
 @Composable
 fun MyApp() {
+    // =======================================================
+    // 1. INISIALISASI NAVIGASI & STATE GLOBAL (VIEWMODEL)
+    // =======================================================
+    // navController adalah pengontrol utama perpindahan halaman (Activity/Screen)
     val navController = rememberNavController()
+
+    // Inisialisasi ViewModel di tingkat paling atas (MyApp) agar data (state)
+    // tetap hidup dan bisa dipakai bersama oleh semua layar di bawahnya.
     val viewModel: ShoeViewModel = viewModel()
 
+    // =======================================================
+    // 2. NAVHOST (PENGATUR RUTE APLIKASI)
+    // =======================================================
+    // startDestination = "login" artinya saat aplikasi pertama kali dibuka,
+    // halaman yang langsung muncul adalah layar Login.
     NavHost(navController = navController, startDestination = "login") {
 
-        // 1. HALAMAN LOGIN
+        // --- RUTE 1: HALAMAN LOGIN ---
         composable("login") {
             LoginScreen(
-                // Sekarang onLoginClick cuma bawa SATU data (role/userId)
-                // Sesuai dengan LoginScreen(onLoginClick: (String) -> Unit)
                 onLoginClick = { roleOrId ->
-                    // Kita asumsikan userId sama dengan role untuk sementara
-                    // agar navigasi tetap jalan.
+                    // Saat tombol login berhasil ditekan, sistem akan mengarahkan ke MainScreen.
+                    // Parameter dikirim melalui URL rute, mirip seperti web (main/staff/staff)
                     navController.navigate("main/$roleOrId/$roleOrId") {
+                        // KUNCI KEAMANAN: popUpTo memastikan halaman login dihapus dari riwayat (backstack).
+                        // Jadi kalau user pencet tombol 'Back' di HP, mereka langsung keluar dari aplikasi,
+                        // BUKAN kembali ke halaman login dalam keadaan sudah masuk.
                         popUpTo("login") { inclusive = true }
                     }
                 }
             )
         }
 
-        // 2. HALAMAN UTAMA (KHUSUS STAF)
+        // --- RUTE 2: HALAMAN UTAMA (KHUSUS STAF) ---
+        // Rute ini menerima dua argumen dinamis (variabel) yaitu {role} dan {userId}
         composable(
             route = "main/{role}/{userId}",
             arguments = listOf(
@@ -41,14 +55,20 @@ fun MyApp() {
                 navArgument("userId") { type = NavType.StringType }
             )
         ) { backStackEntry ->
+            // Menangkap data yang dikirim dari halaman Login
             val role = backStackEntry.arguments?.getString("role") ?: "staff"
             val userId = backStackEntry.arguments?.getString("userId") ?: ""
 
+            // Memanggil MainScreen dan meneruskan data userId serta ViewModel
             MainScreen(
                 userId = userId,
                 viewModel = viewModel,
                 onLogout = {
+                    // Logika saat tombol Logout ditekan di ProfileScreen:
+                    // Arahkan kembali ke halaman "login"
                     navController.navigate("login") {
+                        // Bersihkan seluruh riwayat MainScreen dari memori HP
+                        // agar pengguna lain tidak bisa menekan tombol 'Back' untuk mengintip data
                         popUpTo("main/$role/$userId") { inclusive = true }
                     }
                 }

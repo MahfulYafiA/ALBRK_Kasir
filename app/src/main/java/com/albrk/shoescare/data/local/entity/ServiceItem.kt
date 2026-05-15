@@ -1,21 +1,23 @@
 package com.albrk.shoescare.data.local.entity
 
-import androidx.room.Entity
-import androidx.room.PrimaryKey
+// Hapus import androidx.room.Entity dan PrimaryKey
 
-@Entity(tableName = "services")
 data class ServiceItem(
-    @PrimaryKey(autoGenerate = true)
-    val id: Int = 0,
+    // ID menggunakan String karena mengikuti Key (push ID) dari Firebase
+    val id: String = "",
 
-    val name: String,
+    val name: String = "",
 
-    val price: Int,
+    val price: Int = 0,
 
-    // imageRes tetap ada untuk mendukung gambar bawaan dari folder drawable
-    val imageRes: Int,
+    // imageRes tetap ada untuk mendukung gambar bawaan (default dari drawable)
+    val imageRes: Int = 0,
 
-    // KOLOM BARU: Untuk menyimpan lokasi (URI) foto dari galeri HP
-    // Kita buat optional (bisa null) agar tidak error jika tidak ada foto
-    val imageUri: String? = null
+    // imageUri menyimpan nama file di drawable (misal: "fastclean")
+    // atau URI path jika kedepannya pakai upload galeri
+    val imageUri: String? = null,
+
+    // FITUR PRODUKSI: Untuk mengontrol layanan tampil atau tidak di sisi pelanggan
+    // Default true agar saat dibuat langsung aktif
+    val isActive: Boolean = true
 )

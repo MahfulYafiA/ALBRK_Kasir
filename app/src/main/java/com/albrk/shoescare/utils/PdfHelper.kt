@@ -1,138 +1,181 @@
 package com.albrk.shoescare.utils
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.*
 import android.graphics.pdf.PdfDocument
-import android.net.Uri
 import android.os.Environment
 import android.widget.Toast
+import com.albrk.shoescare.data.local.entity.Transaction
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.*
 
+/**
+ * PDF HELPER OBJECT
+ * Fungsi: Utilitas untuk membuat (generate) dokumen PDF secara programatik.
+ * Menggunakan library asli Android: android.graphics.pdf.PdfDocument.
+ */
 object PdfHelper {
 
-    // --- FUNGSI 1: GENERATE STRUK PDF (DESAIN PREMIUM KAMU) ---
+    /**
+     * FUNGSI 1: MENGHASILKAN LAPORAN KEUANGAN (UKURAN A4)
+     * Digunakan untuk merekap banyak transaksi dalam satu lembar kertas resmi.
+     */
+    fun generateLaporanKeuangan(
+        context: Context,
+        transactions: List<Transaction>,
+        totalIncome: Int,
+        periodStart: String,
+        periodEnd: String
+    ) {
+        val pdfDocument = PdfDocument()
+
+        // --- SETTING HALAMAN ---
+        // Ukuran A4 Standar dalam satuan 'points' (595 x 842). 1 point = 1/72 inch.
+        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
+        val page = pdfDocument.startPage(pageInfo)
+
+        // Canvas adalah media untuk 'menggambar' teks dan garis pada PDF
+        val canvas: Canvas = page.canvas
+        // Paint adalah 'kuas' yang menentukan warna, ukuran teks, dan ketebalan garis
+        val paint = Paint()
+
+        // --- MENGGAMBAR JUDUL LAPORAN ---
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.textSize = 22f
+        paint.textAlign = Paint.Align.CENTER
+        canvas.drawText("LAPORAN PENDAPATAN ALBRK", 297f, 60f, paint) // 297f adalah titik tengah lebar A4
+
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        paint.textSize = 12f
+        canvas.drawText("Periode: $periodStart - $periodEnd", 297f, 85f, paint)
+
+        // Menggambar Garis Horizontal (Header)
+        paint.strokeWidth = 2f
+        canvas.drawLine(50f, 110f, 545f, 110f, paint)
+
+        // --- MENGGAMBAR HEADER TABEL ---
+        paint.textAlign = Paint.Align.LEFT
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        canvas.drawText("TANGGAL", 55f, 140f, paint)
+        canvas.drawText("PELANGGAN", 160f, 140f, paint)
+        canvas.drawText("TOTAL", 460f, 140f, paint)
+
+        canvas.drawLine(50f, 150f, 545f, 150f, paint)
+
+        // --- LOOPING DATA TRANSAKSI (ISI TABEL) ---
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        var yPos = 180f // Koordinat vertikal awal untuk baris pertama
+        val sdf = SimpleDateFormat("dd/MM/yy", Locale("id", "ID"))
+
+        for (trans in transactions) {
+            // Logika Keamanan: Jika data terlalu banyak, hentikan gambar sebelum menabrak batas bawah kertas
+            if (yPos > 750f) break
+
+            canvas.drawText(sdf.format(Date(trans.date)), 55f, yPos, paint)
+
+            // Membatasi panjang nama agar tidak bertabrakan dengan kolom total (Ellipsize manual)
+            val displayName = if(trans.customerName.length > 25) trans.customerName.take(22) + "..." else trans.customerName
+            canvas.drawText(displayName, 160f, yPos, paint)
+
+            canvas.drawText("Rp ${trans.totalPrice}", 460f, yPos, paint)
+
+            yPos += 25f // Memberi jarak 25 point untuk baris berikutnya
+        }
+
+        // Garis Penutup Tabel
+        canvas.drawLine(50f, yPos, 545f, yPos, paint)
+
+        // --- RINGKASAN TOTAL ---
+        yPos += 40f
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.textSize = 16f
+        canvas.drawText("TOTAL PENDAPATAN: Rp $totalIncome", 55f, yPos, paint)
+
+        // --- FOOTER TANDA TANGAN ---
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
+        paint.textSize = 12f
+        paint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("Madiun, ${SimpleDateFormat("dd MMMM yyyy", Locale("id", "ID")).format(Date())}", 530f, yPos + 60f, paint)
+        canvas.drawText("Admin Produksi ALBRK", 530f, yPos + 80f, paint)
+        canvas.drawText("____________________", 530f, yPos + 140f, paint)
+
+        // Menyelesaikan halaman dan menutup dokumen
+        pdfDocument.finishPage(page)
+
+        val fileName = "Laporan_Keuangan_${System.currentTimeMillis()}.pdf"
+        savePdfFile(context, pdfDocument, fileName)
+    }
+
+    /**
+     * FUNGSI 2: MENGHASILKAN STRUK PEMBAYARAN (UKURAN KECIL/THERMAL)
+     * Digunakan untuk mencetak nota instan per transaksi.
+     */
     fun generateStruk(context: Context, customerName: String, services: String, totalPrice: Int) {
         val pdfDocument = PdfDocument()
 
-        // Ukuran kertas ala Struk Thermal Printer (Lebar 400, Tinggi 600)
+        // Ukuran kertas disesuaikan dengan Struk Thermal (Lebar 400, Tinggi 600)
         val pageInfo = PdfDocument.PageInfo.Builder(400, 600, 1).create()
         val page = pdfDocument.startPage(pageInfo)
         val canvas: Canvas = page.canvas
-
         val paint = Paint()
-        val titlePaint = Paint()
-        val dashedPaint = Paint()
 
-        canvas.drawColor(Color.WHITE)
-
-        // HEADER
-        titlePaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        titlePaint.textSize = 26f
-        titlePaint.textAlign = Paint.Align.CENTER
-        canvas.drawText("ALBRK SHOES CARE", 200f, 60f, titlePaint)
-
-        paint.textSize = 14f
+        // Judul Struk
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.textSize = 24f
         paint.textAlign = Paint.Align.CENTER
-        canvas.drawText("Premium Shoe Treatment", 200f, 85f, paint)
+        canvas.drawText("ALBRK SHOES CARE", 200f, 60f, paint)
+
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         paint.textSize = 12f
-        canvas.drawText("Jl. Madiun Raya No. 123", 200f, 105f, paint)
+        canvas.drawText("Premium Shoe Treatment", 200f, 85f, paint)
 
-        // GARIS PUTUS-PUTUS
-        dashedPaint.style = Paint.Style.STROKE
-        dashedPaint.pathEffect = DashPathEffect(floatArrayOf(5f, 5f), 0f)
-        dashedPaint.strokeWidth = 2f
-        dashedPaint.color = Color.DKGRAY
-        canvas.drawLine(20f, 130f, 380f, 130f, dashedPaint)
+        canvas.drawLine(20f, 110f, 380f, 110f, paint)
 
-        // INFO PELANGGAN
+        // Detail Transaksi
         paint.textAlign = Paint.Align.LEFT
         paint.textSize = 14f
-        paint.color = Color.BLACK
-        val date = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()).format(Date())
+        canvas.drawText("Nama  : $customerName", 30f, 150f, paint)
+        canvas.drawText("Item  : $services", 30f, 180f, paint)
 
-        canvas.drawText("Tanggal  : $date", 20f, 160f, paint)
-        canvas.drawText("Klien      : $customerName", 20f, 185f, paint)
+        canvas.drawLine(20f, 210f, 380f, 210f, paint)
 
-        canvas.drawLine(20f, 210f, 380f, 210f, dashedPaint)
+        // Bagian Total
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        paint.textSize = 18f
+        canvas.drawText("TOTAL : Rp $totalPrice", 30f, 250f, paint)
 
-        // DAFTAR LAYANAN (Dukungan Multi-Item)
-        titlePaint.textSize = 14f
-        titlePaint.textAlign = Paint.Align.LEFT
-        canvas.drawText("ITEM / LAYANAN :", 20f, 240f, titlePaint)
-
-        var yPos = 265f
-        val items = services.split(", ")
-        paint.textSize = 14f
-        for (item in items) {
-            canvas.drawText("• $item", 30f, yPos, paint)
-            yPos += 25f
-        }
-
-        canvas.drawLine(20f, yPos + 15f, 380f, yPos + 15f, dashedPaint)
-
-        // TOTAL
-        titlePaint.textSize = 22f
-        titlePaint.textAlign = Paint.Align.LEFT
-        canvas.drawText("TOTAL", 20f, yPos + 55f, titlePaint)
-
-        titlePaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("Rp $totalPrice", 380f, yPos + 55f, titlePaint)
-
-        canvas.drawLine(20f, yPos + 80f, 380f, yPos + 80f, dashedPaint)
-
-        // FOOTER
-        paint.textAlign = Paint.Align.CENTER
+        paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         paint.textSize = 12f
-        canvas.drawText("Terima kasih atas kepercayaan Anda!", 200f, yPos + 120f, paint)
-        canvas.drawText("Sepatu bersih, langkah makin percaya diri.", 200f, yPos + 140f, paint)
+        paint.textAlign = Paint.Align.CENTER
+        canvas.drawText("Terima kasih atas kunjungan Anda!", 200f, 320f, paint)
 
         pdfDocument.finishPage(page)
 
-        // SIMPAN FILE
-        val dir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
         val fileName = "Struk_${customerName.replace(" ", "_")}_${System.currentTimeMillis()}.pdf"
-        val file = File(dir, fileName)
-
-        try {
-            pdfDocument.writeTo(FileOutputStream(file))
-            Toast.makeText(context, "PDF Berhasil Tersimpan di Download", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            e.printStackTrace()
-            Toast.makeText(context, "Gagal simpan PDF: ${e.message}", Toast.LENGTH_SHORT).show()
-        } finally {
-            pdfDocument.close()
-        }
+        savePdfFile(context, pdfDocument, fileName)
     }
 
-    // --- FUNGSI 2: KIRIM STRUK VIA WHATSAPP ---
-    fun sendWhatsApp(context: Context, customerName: String, services: String, totalPrice: Int) {
-        val message = """
-            *ALBRK SHOES CARE* 👟
-            ---------------------------
-            Halo Kak *$customerName*, 
-            Terima kasih telah mempercayakan sepatu Anda kepada kami!
-            
-            *Rincian Layanan:*
-            ${services.replace(", ", "\n• ")}
-            
-            *Total Biaya:* Rp $totalPrice
-            *Status:* Diproses
-            ---------------------------
-            Pantau terus status cucian Anda di aplikasi kami ya Kak!
-        """.trimIndent()
-
-        val intent = Intent(Intent.ACTION_VIEW).apply {
-            data = Uri.parse("https://api.whatsapp.com/send?text=${Uri.encode(message)}")
-        }
+    /**
+     * HELPER: PROSES PENYIMPANAN KE FILESYSTEM
+     * Fungsi ini bertugas memindahkan objek PdfDocument dari memori RAM ke file fisik di storage.
+     */
+    private fun savePdfFile(context: Context, pdfDocument: PdfDocument, fileName: String) {
+        // Mengarahkan lokasi simpan ke folder 'Download' agar mudah ditemukan user
+        val directory = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS)
+        val file = File(directory, fileName)
 
         try {
-            context.startActivity(intent)
+            // Proses Stream Data: Menulis data PDF ke dalam file fisik
+            pdfDocument.writeTo(FileOutputStream(file))
+            Toast.makeText(context, "PDF tersimpan di folder Download", Toast.LENGTH_LONG).show()
         } catch (e: Exception) {
-            Toast.makeText(context, "WhatsApp tidak terpasang boss!", Toast.LENGTH_SHORT).show()
+            e.printStackTrace()
+            Toast.makeText(context, "Gagal menyimpan PDF: ${e.message}", Toast.LENGTH_SHORT).show()
+        } finally {
+            // Sangat penting untuk menutup document agar tidak terjadi Memory Leak
+            pdfDocument.close()
         }
     }
 }
