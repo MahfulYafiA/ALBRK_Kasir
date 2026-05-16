@@ -1,4 +1,4 @@
-package com.albrk.shoescare.data.local.entity
+package com.albrk.shoescare.data.firebase.model
 
 // Hapus import androidx.room...
 

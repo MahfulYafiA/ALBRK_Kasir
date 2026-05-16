@@ -1,14 +1,20 @@
 package com.albrk.shoescare.ui.screen.staff
 
+import android.net.Uri
 import android.widget.Toast
-import androidx.compose.foundation.Image
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,199 +23,229 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.albrk.shoescare.R
+import coil.compose.AsyncImage
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.storage.FirebaseStorage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ProfileScreen(onLogout: () -> Unit) {
-    // =======================================================
-    // 1. INISIALISASI CONTEXT & FIREBASE AUTH
-    // =======================================================
-    val context = LocalContext.current // Digunakan untuk memunculkan pesan pop-up (Toast)
+fun ProfileScreen(
+    onLogout: () -> Unit,
+    onNavigateBack: (() -> Unit)? = null // Opsional: Berjaga-jaga jika Admin butuh tombol kembali
+) {
+    val context = LocalContext.current
+    val auth = FirebaseAuth.getInstance()
+    val user = auth.currentUser
+    val uid = user?.uid ?: ""
 
-    // Mengambil data user yang sedang login saat ini langsung dari server Firebase
-    val user = FirebaseAuth.getInstance().currentUser
+    // --- Referensi Database & Storage Khusus Admin ---
+    val adminRef = FirebaseDatabase.getInstance("https://albrk-shoescare-default-rtdb.asia-southeast1.firebasedatabase.app").getReference("admins").child(uid)
+    val storageRef = FirebaseStorage.getInstance().reference.child("admin_profiles/$uid.jpg")
 
-    // =======================================================
-    // 2. STATE MANAGEMENT (MANAJEMEN STATUS UI)
-    // =======================================================
-    var kasirName by remember { mutableStateOf("Kasir ALBRK") }
+    // --- State Data Profil (Sama Persis dengan Pelanggan) ---
+    var name by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var address by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf(user?.email ?: "") }
+    var photoUrl by remember { mutableStateOf("") }
 
-    // Fitur Ganti Foto (Saat ini diset untuk 1 gambar bawaan)
-    val avatarOptions = listOf(R.drawable.albrk)
-    var avatarIndex by remember { mutableStateOf(0) }
-
-    // State untuk form ganti kata sandi
+    // --- State Keamanan ---
     var newPassword by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(false) }
 
-    // Indikator apakah sistem sedang memproses pergantian sandi (mencegah spam klik)
-    var isChangingPassword by remember { mutableStateOf(false) }
+    // --- Launcher Galeri ---
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { imageUri ->
+            isLoading = true
+            Toast.makeText(context, "Mengunggah foto...", Toast.LENGTH_SHORT).show()
+            storageRef.putFile(imageUri).addOnSuccessListener {
+                storageRef.downloadUrl.addOnSuccessListener { downloadUrl ->
+                    val url = downloadUrl.toString()
+                    adminRef.child("photoUrl").setValue(url)
+                    photoUrl = url
+                    isLoading = false
+                    Toast.makeText(context, "Foto diperbarui!", Toast.LENGTH_SHORT).show()
+                }
+            }.addOnFailureListener {
+                isLoading = false
+                Toast.makeText(context, "Gagal unggah foto.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    // --- Ambil Data Admin Saat Layar Dibuka ---
+    LaunchedEffect(uid) {
+        if (uid.isNotEmpty()) {
+            adminRef.get().addOnSuccessListener { snapshot ->
+                name = snapshot.child("name").getValue(String::class.java) ?: ""
+                phone = snapshot.child("phone").getValue(String::class.java) ?: ""
+                address = snapshot.child("address").getValue(String::class.java) ?: ""
+                photoUrl = snapshot.child("photoUrl").getValue(String::class.java) ?: ""
+            }
+        }
+    }
 
     Scaffold(
         topBar = {
-            TopAppBar(title = { Text("Pengaturan Profil", fontWeight = FontWeight.Bold) })
+            CenterAlignedTopAppBar(
+                title = { Text("Kelola Profil", fontWeight = FontWeight.Bold) },
+                navigationIcon = {
+                    if (onNavigateBack != null) {
+                        IconButton(onClick = onNavigateBack) { Icon(Icons.AutoMirrored.Filled.ArrowBack, null) }
+                    }
+                }
+            )
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 24.dp),
+                .padding(horizontal = 24.dp)
+                .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // =======================================================
-            // 3. AREA FOTO PROFIL
-            // =======================================================
+            // ================= FOTO PROFIL (PENSIL BULAT UTUH) =================
             Box(
                 modifier = Modifier
-                    .size(130.dp)
-                    .clip(CircleShape) // Membuat foto menjadi bulat sempurna
-                    .clickable {
-                        // Logika Ganti Foto: Menggunakan modulo (%) agar index berputar kembali ke 0
-                        // jika sudah mencapai akhir list gambar.
-                        avatarIndex = (avatarIndex + 1) % avatarOptions.size
-                        Toast.makeText(context, "Klik ganti foto (Tambahkan aset lain nanti)", Toast.LENGTH_SHORT).show()
-                    }
+                    .size(110.dp)
+                    .clickable(enabled = !isLoading) { launcher.launch("image/*") },
+                contentAlignment = Alignment.Center
             ) {
-                Image(
-                    painter = painterResource(id = avatarOptions[avatarIndex]),
-                    contentDescription = "Foto Kasir",
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop // Memotong gambar agar tidak gepeng
-                )
-
-                // Overlay kotak hitam transparan bertuliskan "UBAH" di bagian bawah foto
-                Surface(
+                // Box Internal (Area Foto)
+                Box(
                     modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .fillMaxWidth(),
-                    color = Color.Black.copy(alpha = 0.6f)
+                        .size(100.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primaryContainer),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "UBAH",
-                        color = Color.White,
-                        fontSize = 11.sp,
-                        textAlign = TextAlign.Center,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(vertical = 4.dp)
-                    )
+                    if (photoUrl.isNotEmpty()) {
+                        AsyncImage(
+                            model = photoUrl,
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxSize(),
+                            contentScale = ContentScale.Crop
+                        )
+                    } else {
+                        Icon(Icons.Default.Person, null, modifier = Modifier.size(60.dp))
+                    }
+                }
+
+                // Lencana Ikon Pensil (Di luar lingkaran agar tidak terpotong)
+                Box(
+                    modifier = Modifier.size(100.dp),
+                    contentAlignment = Alignment.BottomEnd
+                ) {
+                    Surface(
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp).offset(x = 4.dp, y = 4.dp),
+                        tonalElevation = 4.dp
+                    ) {
+                        Icon(Icons.Default.Edit, null, tint = Color.White, modifier = Modifier.padding(8.dp))
+                    }
                 }
             }
 
-            Spacer(Modifier.height(16.dp))
-            Text(text = kasirName, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold)
-            Text(text = "Status: Staff / Kasir Aktif", fontSize = 14.sp, color = Color.Gray)
+            Spacer(modifier = Modifier.height(30.dp))
 
-            Spacer(Modifier.height(32.dp))
-
-            // =======================================================
-            // 4. FORM INFORMASI DATA DIRI
-            // =======================================================
-            OutlinedTextField(
-                value = kasirName,
-                onValueChange = { kasirName = it },
-                label = { Text("Nama Lengkap") },
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(Modifier.height(12.dp))
-
-            // Field Email dikunci (Read-Only) karena email terikat langsung dengan kredensial Firebase
-            OutlinedTextField(
-                // Mengambil email asli dari Firebase, jika null maka gunakan teks default
-                value = user?.email ?: "staf@gmail.com",
-                onValueChange = {},
-                label = { Text("Email (Hanya Baca)") },
-                enabled = false, // KUNCI: Membuat field tidak bisa diketik
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp)
-            )
-
-            Spacer(Modifier.height(24.dp))
-            HorizontalDivider() // Garis pemisah visual
-            Spacer(Modifier.height(24.dp))
-
-            // =======================================================
-            // 5. FITUR GANTI KATA SANDI (FIREBASE AUTHENTICATION)
-            // =======================================================
-            Text(
-                text = "Keamanan Akun",
-                modifier = Modifier.fillMaxWidth(),
-                fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
-            )
-            Spacer(Modifier.height(8.dp))
+            // ================= FORM INFORMASI UMUM =================
+            Text("Informasi Umum", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(8.dp))
 
             OutlinedTextField(
-                value = newPassword,
-                onValueChange = { newPassword = it },
-                label = { Text("Kata Sandi Baru") },
-                visualTransformation = PasswordVisualTransformation(), // Menyamarkan teks jadi titik-titik bulat
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp),
-                leadingIcon = { Icon(Icons.Default.Lock, contentDescription = null) }
+                value = name, onValueChange = { name = it },
+                label = { Text("Nama Lengkap") }, modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = phone, onValueChange = { phone = it },
+                label = { Text("Nomor WhatsApp") }, modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = address, onValueChange = { address = it },
+                label = { Text("Alamat Default") }, modifier = Modifier.fillMaxWidth()
             )
 
-            Spacer(Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
+            // ================= FORM AKUN & KEAMANAN =================
+            Text("Akun & Keamanan", fontWeight = FontWeight.Bold, modifier = Modifier.fillMaxWidth())
+            Spacer(modifier = Modifier.height(8.dp))
+
+            OutlinedTextField(
+                value = email, onValueChange = { email = it },
+                label = { Text("Email Akun") }, modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            OutlinedTextField(
+                value = newPassword, onValueChange = { newPassword = it },
+                label = { Text("Sandi Baru (Kosongkan jika tidak diubah)") },
+                visualTransformation = PasswordVisualTransformation(),
+                modifier = Modifier.fillMaxWidth()
+            )
+
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // ================= TOMBOL SIMPAN =================
             Button(
                 onClick = {
-                    // Validasi lokal: Firebase mengharuskan password minimal 6 karakter
-                    if (newPassword.length >= 6) {
-                        isChangingPassword = true // Mengubah state tombol menjadi "Menyimpan..."
+                    isLoading = true
+                    // 1. Simpan Data Teks ke Firebase Realtime Database
+                    val adminMap = mapOf(
+                        "name" to name, "phone" to phone,
+                        "address" to address, "photoUrl" to photoUrl
+                    )
+                    adminRef.updateChildren(adminMap).addOnCompleteListener {
+                        // 2. Ganti Email (Jika ada perubahan)
+                        if (email.isNotEmpty() && email != user?.email) {
+                            user?.verifyBeforeUpdateEmail(email)
+                        }
+                        // 3. Ganti Sandi (Jika kolom diisi)
+                        if (newPassword.isNotEmpty() && newPassword.length >= 6) {
+                            user?.updatePassword(newPassword)
+                        }
 
-                        // Memanggil API Firebase untuk mengupdate password pengguna saat ini
-                        user?.updatePassword(newPassword)
-                            ?.addOnCompleteListener { task ->
-                                isChangingPassword = false
-                                if (task.isSuccessful) {
-                                    Toast.makeText(context, "Sandi berhasil diubah!", Toast.LENGTH_SHORT).show()
-                                    newPassword = "" // Kosongkan field jika sukses
-                                } else {
-                                    // Firebase memiliki fitur keamanan: jika sesi login sudah terlalu lama (stale token),
-                                    // Firebase akan menolak ganti sandi demi keamanan. User harus relogin.
-                                    Toast.makeText(context, "Gagal: Harus login ulang dulu", Toast.LENGTH_LONG).show()
-                                }
-                            }
-                    } else {
-                        Toast.makeText(context, "Sandi minimal 6 karakter!", Toast.LENGTH_SHORT).show()
+                        isLoading = false
+                        Toast.makeText(context, "Data berhasil disimpan!", Toast.LENGTH_SHORT).show()
+                        newPassword = "" // Kosongkan field sandi setelah sukses
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
-                // Tombol hanya bisa diklik jika input tidak kosong DAN tidak sedang proses loading
-                enabled = newPassword.isNotEmpty() && !isChangingPassword,
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isLoading
             ) {
-                Text(if (isChangingPassword) "Menyimpan..." else "Perbarui Sandi")
+                if (isLoading) CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                else Text("Simpan Perubahan")
             }
 
-            Spacer(Modifier.weight(1f)) // Mendorong tombol logout mentok ke bagian bawah layar
+            Spacer(modifier = Modifier.height(16.dp))
 
-            // =======================================================
-            // 6. TOMBOL LOGOUT
-            // =======================================================
-            Button(
-                // Memanggil fungsi onLogout() yang di-passing dari MainScreen untuk mengatur navigasi
+            // ================= TOMBOL LOGOUT =================
+            OutlinedButton(
                 onClick = onLogout,
-                modifier = Modifier.fillMaxWidth(),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F)), // Merah peringatan
-                shape = RoundedCornerShape(12.dp)
+                modifier = Modifier.fillMaxWidth().height(50.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color.Red)
             ) {
-                Icon(Icons.AutoMirrored.Filled.ExitToApp, contentDescription = null)
-                Spacer(Modifier.width(8.dp))
-                Text("Logout / Keluar", fontWeight = FontWeight.Bold)
+                Text("Keluar dari Akun")
             }
-            Spacer(Modifier.height(24.dp))
+
+            Spacer(modifier = Modifier.height(40.dp))
         }
     }
 }

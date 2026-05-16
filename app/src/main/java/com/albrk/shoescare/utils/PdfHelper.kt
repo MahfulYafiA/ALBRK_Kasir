@@ -5,7 +5,7 @@ import android.graphics.*
 import android.graphics.pdf.PdfDocument
 import android.os.Environment
 import android.widget.Toast
-import com.albrk.shoescare.data.local.entity.Transaction
+import com.albrk.shoescare.data.firebase.model.Transaction
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat

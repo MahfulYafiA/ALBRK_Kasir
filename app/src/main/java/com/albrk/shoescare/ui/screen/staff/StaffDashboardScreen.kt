@@ -15,7 +15,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -24,8 +23,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.albrk.shoescare.R
-import com.albrk.shoescare.data.local.entity.ServiceItem
-import com.albrk.shoescare.data.local.entity.Transaction
+import com.albrk.shoescare.data.firebase.model.ServiceItem
+import com.albrk.shoescare.data.firebase.model.Transaction
 import com.albrk.shoescare.utils.PdfHelper
 import com.albrk.shoescare.viewmodel.ShoeViewModel
 import java.text.SimpleDateFormat

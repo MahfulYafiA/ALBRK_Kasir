@@ -1,25 +1,34 @@
 package com.albrk.shoescare.ui.screen.staff
 
+import android.net.Uri
 import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add // [PERBAIKAN] Menggunakan icon Add standar
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.albrk.shoescare.data.local.entity.ServiceItem
+import coil.compose.AsyncImage
+import com.albrk.shoescare.data.firebase.model.ServiceItem
 import com.albrk.shoescare.viewmodel.ShoeViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -27,21 +36,25 @@ import com.albrk.shoescare.viewmodel.ShoeViewModel
 fun ManageServiceScreen(viewModel: ShoeViewModel) {
     val context = LocalContext.current
 
-    // =======================================================
-    // 1. STATE MANAGEMENT UNTUK FORM INPUT
-    // State ini akan mengontrol teks yang diketik pengguna.
-    // Saat tombol "Edit" diklik, nilai di sini akan diisi dengan data layanan yang dipilih.
-    // =======================================================
+    // --- 1. STATE FORM INPUT ---
     var name by remember { mutableStateOf("") }
     var price by remember { mutableStateOf("") }
-    var selectedId by remember { mutableStateOf("") } // Jika kosong = mode Tambah, Jika terisi = mode Edit
-    var isActiveState by remember { mutableStateOf(true) } // Mengingat status aktif/nonaktif saat mode Edit
+    var selectedId by remember { mutableStateOf("") }
+    var isActiveState by remember { mutableStateOf(true) }
 
-    // =======================================================
-    // 2. OBSERVASI DATA LAYANAN DARI FIREBASE (REALTIME)
-    // =======================================================
-    // Menggunakan collectAsState() agar UI otomatis me-refresh daftar layanan
-    // setiap kali ada perubahan data (tambah/edit/hapus) di Firebase.
+    // State Baru Khusus untuk Foto Layanan
+    var imageUri by remember { mutableStateOf<Uri?>(null) } // Foto lokal yang baru dipilih
+    var existingImageUrl by remember { mutableStateOf("") } // URL foto lama yang sudah ada di Firebase
+    var isUploading by remember { mutableStateOf(false) } // Indikator loading saat gambar dikirim
+
+    // --- 2. LAUNCHER GALERI ---
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { imageUri = it }
+    }
+
+    // --- 3. OBSERVASI DATA FIREBASE ---
     val services by viewModel.allServices.collectAsState(initial = emptyList())
 
     Scaffold(
@@ -60,35 +73,68 @@ fun ManageServiceScreen(viewModel: ShoeViewModel) {
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            // =======================================================
-            // 3. AREA INPUT FORM (TAMBAH / EDIT LAYANAN)
-            // =======================================================
+            // ================= FORM TAMBAH/EDIT =================
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(4.dp),
                 colors = CardDefaults.cardColors(containerColor = Color.White)
             ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    // Judul Form berubah otomatis tergantung mode (Tambah atau Edit)
+                Column(modifier = Modifier.padding(16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(
                         text = if (selectedId.isEmpty()) "Tambah Layanan Baru" else "Edit Layanan",
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxWidth()
                     )
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Input Nama Layanan
+                    // --- AREA PILIH FOTO ---
+                    Box(
+                        modifier = Modifier
+                            .size(100.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFFEEEEEE))
+                            .clickable { launcher.launch("image/*") },
+                        contentAlignment = Alignment.Center
+                    ) {
+                        if (imageUri != null) {
+                            // Menampilkan preview foto baru dari memori HP
+                            AsyncImage(
+                                model = imageUri,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else if (existingImageUrl.isNotEmpty()) {
+                            // Menampilkan foto lama dari server Firebase
+                            AsyncImage(
+                                model = existingImageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Crop
+                            )
+                        } else {
+                            // Tampilan awal (Kosong)
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                // [PERBAIKAN] Menggunakan icon Add
+                                Icon(Icons.Default.Add, contentDescription = null, tint = Color.Gray)
+                                Text("Pilih Foto", fontSize = 10.sp, color = Color.Gray)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Nama Layanan (contoh: Deep Clean)") },
+                        label = { Text("Nama Layanan (Contoh: Deep Clean)") },
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Input Harga Layanan (Keyboard diset khusus untuk angka)
                     OutlinedTextField(
                         value = price,
                         onValueChange = { price = it },
@@ -100,46 +146,49 @@ fun ManageServiceScreen(viewModel: ShoeViewModel) {
 
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Tombol Simpan / Update
+                    // --- TOMBOL SIMPAN ---
                     Button(
                         onClick = {
                             if (name.isNotBlank() && price.isNotBlank()) {
-                                // Membuat nama file gambar standar berdasarkan nama layanan
-                                // Contoh: "Deep Clean" -> "deepclean"
-                                val autoImageName = name.lowercase().replace(" ", "")
-
-                                // Menyimpan data ke Firebase melalui ViewModel
-                                viewModel.addMasterService(
-                                    ServiceItem(
-                                        id = selectedId, // Jika id kosong, Firebase akan membuatkan key baru
-                                        name = name,
-                                        price = price.toIntOrNull() ?: 0,
-                                        imageRes = 0,
-                                        imageUri = autoImageName,
-                                        isActive = isActiveState // Mempertahankan status aktif yang terakhir
-                                    )
-                                )
-
-                                Toast.makeText(context, "Data berhasil disimpan!", Toast.LENGTH_SHORT).show()
-
-                                // Reset semua isi form kembali ke kosong setelah sukses menyimpan
-                                name = ""; price = ""; selectedId = ""; isActiveState = true
+                                isUploading = true
+                                // Panggil fungsi Pro dari ViewModel
+                                viewModel.saveServiceWithImage(
+                                    id = selectedId,
+                                    name = name,
+                                    price = price.toIntOrNull() ?: 0,
+                                    imageUri = imageUri,
+                                    existingImageUrl = existingImageUrl
+                                ) { isSuccess ->
+                                    isUploading = false
+                                    if (isSuccess) {
+                                        Toast.makeText(context, "Layanan disimpan!", Toast.LENGTH_SHORT).show()
+                                        // Reset Form
+                                        name = ""; price = ""; selectedId = ""
+                                        imageUri = null; existingImageUrl = ""
+                                    } else {
+                                        Toast.makeText(context, "Gagal mengupload layanan.", Toast.LENGTH_SHORT).show()
+                                    }
+                                }
                             } else {
                                 Toast.makeText(context, "Nama dan Harga wajib diisi!", Toast.LENGTH_SHORT).show()
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
+                        shape = RoundedCornerShape(12.dp),
+                        enabled = !isUploading // Nonaktifkan tombol saat proses upload berlangsung
                     ) {
-                        Text(if (selectedId.isEmpty()) "Simpan" else "Update")
+                        if (isUploading) {
+                            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+                        } else {
+                            Text(if (selectedId.isEmpty()) "Simpan" else "Update")
+                        }
                     }
 
-                    // Menampilkan tombol "Batal Edit" hanya jika sedang dalam mode Edit
                     if (selectedId.isNotEmpty()) {
                         TextButton(
                             onClick = {
-                                // Membatalkan edit dan mengosongkan form
                                 name = ""; price = ""; selectedId = ""; isActiveState = true
+                                imageUri = null; existingImageUrl = ""
                             },
                             modifier = Modifier.fillMaxWidth()
                         ) {
@@ -153,9 +202,7 @@ fun ManageServiceScreen(viewModel: ShoeViewModel) {
             Text("Daftar Produk di Toko", fontWeight = FontWeight.Bold, fontSize = 18.sp)
             Spacer(modifier = Modifier.height(8.dp))
 
-            // =======================================================
-            // 4. DAFTAR LAYANAN (LAZY COLUMN)
-            // =======================================================
+            // ================= DAFTAR LAYANAN =================
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 modifier = Modifier.fillMaxSize()
@@ -164,18 +211,32 @@ fun ManageServiceScreen(viewModel: ShoeViewModel) {
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp),
-                        // Warna Card berubah tergantung status layanan:
-                        // Aktif = Putih abu-abu, Nonaktif = Merah muda
-                        colors = CardDefaults.cardColors(
-                            containerColor = if (service.isActive) Color(0xFFF5F5F5) else Color(0xFFFFEBEE)
-                        )
+                        colors = CardDefaults.cardColors(containerColor = if (service.isActive) Color(0xFFF5F5F5) else Color(0xFFFFEBEE))
                     ) {
                         Row(
-                            modifier = Modifier.padding(16.dp).fillMaxWidth(),
+                            modifier = Modifier.padding(12.dp).fillMaxWidth(),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            // Menampilkan Thumbnail Gambar Kecil
+                            Box(
+                                modifier = Modifier
+                                    .size(60.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(Color.LightGray)
+                            ) {
+                                if (!service.imageUri.isNullOrEmpty()) {
+                                    AsyncImage(
+                                        model = service.imageUri,
+                                        contentDescription = null,
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentScale = ContentScale.Crop
+                                    )
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.width(12.dp))
+
                             Column(modifier = Modifier.weight(1f)) {
-                                // Warna teks judul meredup menjadi abu-abu jika layanan sedang nonaktif
                                 Text(
                                     text = service.name,
                                     fontWeight = FontWeight.Bold,
@@ -184,7 +245,6 @@ fun ManageServiceScreen(viewModel: ShoeViewModel) {
                                 )
                                 Text(text = "Rp ${service.price}", color = Color.DarkGray)
 
-                                // Badge (Label) Status Aktif/Nonaktif
                                 Surface(
                                     color = if (service.isActive) Color(0xFFE8F5E9) else Color(0xFFFFCDD2),
                                     shape = RoundedCornerShape(4.dp),
@@ -200,44 +260,28 @@ fun ManageServiceScreen(viewModel: ShoeViewModel) {
                                 }
                             }
 
-                            // --- SWITCH (TOGGLE) AKTIF/NONAKTIF CEPAT ---
-                            // Fitur ini memungkinkan kasir mematikan layanan tanpa harus masuk ke mode Edit
                             Switch(
                                 checked = service.isActive,
-                                onCheckedChange = { isChecked ->
-                                    // Langsung menembak fungsi updateServiceStatus di ViewModel
-                                    // agar Firebase hanya meng-update field 'isActive' tanpa menyentuh field lain.
-                                    viewModel.updateServiceStatus(service.id, isChecked)
-                                },
+                                onCheckedChange = { isChecked -> viewModel.updateServiceStatus(service.id, isChecked) },
                                 colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color(0xFF2E7D32),
-                                    checkedTrackColor = Color(0xFFC8E6C9),
-                                    uncheckedThumbColor = Color(0xFFC62828),
-                                    uncheckedTrackColor = Color(0xFFFFCDD2)
+                                    checkedThumbColor = Color(0xFF2E7D32), checkedTrackColor = Color(0xFFC8E6C9),
+                                    uncheckedThumbColor = Color(0xFFC62828), uncheckedTrackColor = Color(0xFFFFCDD2)
                                 )
                             )
 
-                            Spacer(Modifier.width(8.dp))
-
-                            // --- TOMBOL EDIT ---
                             IconButton(onClick = {
-                                // Mengisi state form di atas (Bagian 1) dengan data layanan yang dipilih
-                                // Ini otomatis akan mengubah tampilan form menjadi "Mode Edit"
                                 name = service.name
                                 price = service.price.toString()
                                 selectedId = service.id
                                 isActiveState = service.isActive
-                            }) {
-                                Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.Blue)
-                            }
+                                existingImageUrl = service.imageUri ?: ""
+                                imageUri = null // Reset gambar lokal saat memilih edit
+                            }) { Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.Blue) }
 
-                            // --- TOMBOL HAPUS ---
                             IconButton(onClick = {
-                                viewModel.deleteMasterService(service.id)
+                                viewModel.deleteMasterService(service) // Sekarang kirim objeknya, bukan cuma id-nya
                                 Toast.makeText(context, "${service.name} dihapus", Toast.LENGTH_SHORT).show()
-                            }) {
-                                Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red)
-                            }
+                            }) { Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red) }
                         }
                     }
                 }

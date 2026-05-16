@@ -39,15 +39,25 @@ android {
 }
 
 dependencies {
+    // =======================================================
     // FIREBASE
+    // =======================================================
     // Menggunakan Firebase BoM untuk manajemen versi otomatis
     implementation(platform("com.google.firebase:firebase-bom:33.0.0"))
     implementation("com.google.firebase:firebase-analytics")
 
-    // UPDATE DI SINI: Gunakan library Realtime Database (Gantikan Firestore)
+    // Gunakan library Realtime Database
     implementation("com.google.firebase:firebase-database")
 
+    // Auth untuk Login & Autentikasi
+    implementation("com.google.firebase:firebase-auth-ktx")
+
+    // [WAJIB DITAMBAHKAN] Storage untuk upload gambar/foto layanan
+    implementation("com.google.firebase:firebase-storage-ktx")
+
+    // =======================================================
     // ANDROIDX & COMPOSE
+    // =======================================================
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -55,11 +65,16 @@ dependencies {
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.material3)
 
+    // =======================================================
     // ROOM (Bisa tetap ada jika ingin pakai Offline-First)
+    // =======================================================
     implementation("androidx.room:room-runtime:2.6.1")
     implementation("androidx.room:room-ktx:2.6.1")
     ksp("androidx.room:room-compiler:2.6.1")
-    implementation("com.google.firebase:firebase-auth-ktx")
+
+    // =======================================================
+    // UI & NAVIGASI TAMBAHAN
+    // =======================================================
     implementation("io.coil-kt:coil-compose:2.4.0")
     implementation("androidx.navigation:navigation-compose:2.7.7")
 }
