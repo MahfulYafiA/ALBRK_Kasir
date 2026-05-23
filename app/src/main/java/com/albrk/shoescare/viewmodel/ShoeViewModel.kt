@@ -143,7 +143,7 @@ class ShoeViewModel : ViewModel() {
                     val fileRef = FirebaseStorage.getInstance().getReferenceFromUrl(service.imageUri)
                     fileRef.delete()
                 } catch (e: Exception) {
-                    // Abaikan jika foto sudah tidak ada di server
+
                 }
             }
         }
