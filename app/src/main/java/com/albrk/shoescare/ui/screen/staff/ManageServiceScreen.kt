@@ -278,10 +278,14 @@ fun ManageServiceScreen(viewModel: ShoeViewModel) {
                                 imageUri = null // Reset gambar lokal saat memilih edit
                             }) { Icon(Icons.Default.Edit, contentDescription = "Edit", tint = Color.Blue) }
 
+                            // [PERBAIKAN] Kirim service.id (String) sesuai dengan isi ViewModel
                             IconButton(onClick = {
-                                viewModel.deleteMasterService(service) // Sekarang kirim objeknya, bukan cuma id-nya
-                                Toast.makeText(context, "${service.name} dihapus", Toast.LENGTH_SHORT).show()
-                            }) { Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red) }
+                                viewModel.deleteMasterService(service.id) {
+                                    Toast.makeText(context, "${service.name} dihapus", Toast.LENGTH_SHORT).show()
+                                }
+                            }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Hapus", tint = Color.Red)
+                            }
                         }
                     }
                 }

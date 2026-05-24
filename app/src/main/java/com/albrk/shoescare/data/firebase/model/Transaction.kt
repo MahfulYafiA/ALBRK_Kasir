@@ -2,7 +2,7 @@ package com.albrk.shoescare.data.firebase.model
 
 // Hapus import androidx.room...
 
-data class Transaction(
+data class  Transaction(
     // ID internal/lokal (opsional, bisa dibiarkan atau dihapus,
     // karena kunci utamanya sekarang adalah firebaseKey)
     val id: Int = 0,
