@@ -45,7 +45,7 @@ fun LoginScreen(onLoginClick: (String) -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFEEEEEE))
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
@@ -77,13 +77,13 @@ fun LoginScreen(onLoginClick: (String) -> Unit) {
             text = "ALBRK KASIR",
             fontSize = 28.sp,
             fontWeight = FontWeight.Black,
-            color = Color.Black
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Text(
             text = if (isLoginMode) "Masuk ke Dashboard Staf" else "Daftar Akun Staf Baru",
             fontSize = 16.sp,
-            color = Color.DarkGray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(bottom = 32.dp)
         )
 
@@ -94,7 +94,7 @@ fun LoginScreen(onLoginClick: (String) -> Unit) {
             value = email,
             onValueChange = { email = it },
             label = { Text("Email Staf", color = Color.Gray) },
-            textStyle = LocalTextStyle.current.copy(color = Color.Black),
+            textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onBackground),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
@@ -106,7 +106,7 @@ fun LoginScreen(onLoginClick: (String) -> Unit) {
             value = password,
             onValueChange = { password = it },
             label = { Text("Password", color = Color.Gray) },
-            textStyle = LocalTextStyle.current.copy(color = Color.Black),
+            textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onBackground),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
@@ -131,7 +131,7 @@ fun LoginScreen(onLoginClick: (String) -> Unit) {
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
                 label = { Text("Konfirmasi Password", color = Color.Gray) },
-                textStyle = LocalTextStyle.current.copy(color = Color.Black),
+                textStyle = LocalTextStyle.current.copy(color = MaterialTheme.colorScheme.onBackground),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
@@ -213,7 +213,7 @@ fun LoginScreen(onLoginClick: (String) -> Unit) {
                 .padding(top = 24.dp)
                 .height(50.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color.Black,
+                containerColor = Color(0xFF3B82F6),
                 contentColor = Color.White
             ),
             shape = RoundedCornerShape(12.dp),
@@ -247,7 +247,7 @@ fun LoginScreen(onLoginClick: (String) -> Unit) {
             )
             Text(
                 text = if (isLoginMode) "Daftar di sini" else "Login di sini",
-                color = MaterialTheme.colorScheme.primary,
+                color = Color(0xFF3B82F6),
                 fontWeight = FontWeight.Bold,
                 fontSize = 14.sp,
                 modifier = Modifier.clickable {
