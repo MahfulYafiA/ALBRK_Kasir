@@ -94,6 +94,7 @@ fun LoginScreen(onLoginClick: (String) -> Unit) {
             value = email,
             onValueChange = { email = it },
             label = { Text("Email Staf", color = Color.Gray) },
+            textStyle = LocalTextStyle.current.copy(color = Color.Black),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
@@ -105,6 +106,7 @@ fun LoginScreen(onLoginClick: (String) -> Unit) {
             value = password,
             onValueChange = { password = it },
             label = { Text("Password", color = Color.Gray) },
+            textStyle = LocalTextStyle.current.copy(color = Color.Black),
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
@@ -129,6 +131,7 @@ fun LoginScreen(onLoginClick: (String) -> Unit) {
                 value = confirmPassword,
                 onValueChange = { confirmPassword = it },
                 label = { Text("Konfirmasi Password", color = Color.Gray) },
+                textStyle = LocalTextStyle.current.copy(color = Color.Black),
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 8.dp),
